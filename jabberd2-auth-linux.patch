@@ -1,0 +1,35 @@
+--- storage/authreg_mysql.c.orig        2016-03-06 09:10:39.961795662 -0500
++++ storage/authreg_mysql.c     2016-03-06 09:13:01.183562169 -0500
+@@ -32,6 +32,7 @@
+ #else
+ #ifdef HAVE_CRYPT
+ #include <unistd.h>
++#include <crypt.h>
+ #endif
+ #endif
+ 
+@@ -274,6 +275,7 @@
+     char db_pw_value[257];
+ #ifdef HAVE_CRYPT
+     char *crypted_pw;
++    char enc_seed[15];
+ #endif
+ #ifdef HAVE_SSL
+     char a1hash_pw[33];
+@@ -291,8 +293,14 @@
+                 break;
+ 
+ #ifdef HAVE_CRYPT
+-        case MPC_CRYPT:
+-                crypted_pw = crypt(password,db_pw_value);
++        case MPC_CRYPT: /* Support for glibc2 crypt() algorithms. */
++                if (strncmp(db_pw_value, "$", 1) == 0) {
++                   snprintf(enc_seed, sizeof(char)*13, "%s", db_pw_value);
++                }
++                else {
++                   snprintf(enc_seed, sizeof(char)*3, "%s", db_pw_value);
++                }
++                crypted_pw = crypt(password, enc_seed);
+                 ret = (strcmp(crypted_pw, db_pw_value) != 0);
+                 break;
+ #endif
